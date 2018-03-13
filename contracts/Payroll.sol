@@ -49,6 +49,13 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         _;
     }
 
+    modifier isValidTokenRates {
+        for (uint8 i = 0; i < tokens.length; i++) {
+            require(tokenRates[i] != 0);
+        }
+        _;
+    }
+
     modifier onlyOracle() {
         require(msg.sender == oracle);
         _;
@@ -193,24 +200,58 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
                     break;
                 }
             }
-            require(isTokenAllowed);
+            if (!isTokenAllowed) {
+                revert();
+            }
         }
 
         employee.tokenDistribution = newDistribution;
         employee.lastAllocateDay = now;
     }
 
-    function payday() onlyEmployee public {
+    function payday() onlyEmployee isValidTokenRates public {
         uint256 employeeId = employeeFlag[msg.sender] - 1;
         Employee storage employee = employees[employeeId];
 
         require(now - employee.lastPayDay >= PAYOUT_CYCLE);
 
         // Require the contract has enough tokens
+        address tokenAddress;
+        uint256 tokenDistribution;
+        uint256[] memory tokensToSend = new uint256[](employee.allowedTokens.length);
+        for (uint8 i = 0; i < employee.allowedTokens.length; i++) {
+            tokenAddress = employee.allowedTokens[i];
+            tokenDistribution = employee.tokenDistribution[i];
+
+            if (tokenDistribution > 0) {
+                uint256 balance = EIP20(tokenAddress).balanceOf(this);
+                uint256 tokenRate = tokenRates[tokenAddress];
+                tokensToSend[i] = (employee.yearlyEURSalary / 12) * tokenRate * employee.tokenDistribution[i] / 100;
+                if (balance < tokensToSend[i]) {
+                    // TODO: Fire an event
+                    revert();
+                }
+            }
+        }
+
+        // Payout, send the tokens
+        for (uint8 j = 0; j < employee.allowedTokens.length; j++) {
+            tokenAddress = employee.allowedTokens[j];
+
+            if (tokensToSend[j] > 0) {
+                if (!EIP20(tokenAddress).transfer(msg.sender, tokensToSend[j])) {
+                    // TODO: Fire an event
+                }
+            }
+        }
+
+        employee.lastPayDay = now;
     }
 
     /* ORACLE ONLY */
-    function setExchangeRate(address token, uint256 eurExchangeRate) public {
-
+    
+    function setExchangeRate(address token, uint256 eurExchangeRate) onlyOracle public {
+        require(tokenFlag[token] > 0);
+        tokenRates[token] = eurExchangeRate;
     }
 }
