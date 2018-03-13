@@ -4,7 +4,10 @@
   "description": "Smart contract challenge for status.im",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "truffle migrate --reset --compile-all",
+    "deploy-rinkeby": "truffle migrate --reset --compile-all --network=rinkeby",
+    "deploy-mainnet": "truffle migrate --reset --compile-all --network=mainnet"
   },
   "repository": {
     "type": "git",
@@ -17,6 +20,7 @@
   },
   "homepage": "https://github.com/yisheng/status-challenge#readme",
   "dependencies": {
+    "truffle-hdwallet-provider": "0.0.3",
     "zeppelin-solidity": "1.7.0"
   }
 }
