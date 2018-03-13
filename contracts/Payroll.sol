@@ -1,10 +1,14 @@
 pragma solidity ^0.4.18;
 
 import "./PayrollInterface.sol";
+import "./Token/EIP20.sol";
+import "./Token/ERC223ReceivingContract.sol";
 import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
-contract Payroll is Ownable, PayrollInterface {
+contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     /* Events */
+
+    event TokenReceived(address from, uint value, bytes data);
 
     /* Struct & Variables */
 
@@ -17,13 +21,20 @@ contract Payroll is Ownable, PayrollInterface {
         uint256 lastAllocateDay;
     }
 
-    Employee[] employees;
-    mapping(address => uint8) employeeMapping;
-    address[] tokens;
-    mapping(address => uint256) tokenRates;
+    address public oracle;
+    Employee[] public employees;
+    mapping(address => uint8) public employeeFlag;
+    address[] public tokens;
+    mapping(address => uint8) public tokenFlag;
+    mapping(address => uint256) public tokenRates;
+
+    modifier onlyOracle() {
+        require(msg.sender == oracle);
+        _;
+    }
 
     modifier onlyEmployee() {
-        require(employeeMapping[msg.sender] == 1);
+        require(employeeFlag[msg.sender] == 1);
         _;
     }
 
@@ -33,7 +44,7 @@ contract Payroll is Ownable, PayrollInterface {
     }
 
     modifier onlyEmployeeNotExist(address accountAddress) {
-        require(employeeMapping[accountAddress] == 0);
+        require(employeeFlag[accountAddress] != 1);
         _;
     }
 
@@ -52,27 +63,65 @@ contract Payroll is Ownable, PayrollInterface {
         require(accountAddress != address(this));
         require(allowedTokens.length == initialTokenDistribution.length);
 
-        Employee memory _employee = Employee(accountAddress, allowedTokens, initialTokenDistribution, initialYearlyEURSalary, now, 0);
-        employees.push(_employee);
+        uint8 i = 0;
+        uint256 sumDistribution = 0;
+        for (i = 0; i < initialTokenDistribution.length; i++) {
+            sumDistribution += initialTokenDistribution[i];
+        }
+        require(sumDistribution == 100);
+
+        Employee memory employee = Employee(accountAddress, allowedTokens, initialTokenDistribution, initialYearlyEURSalary, now, 0);
+        employees.push(employee);
+        employeeFlag[accountAddress] = 1;
+
+        for (i = 0; i < allowedTokens.length; i++) {
+            if (tokenFlag[allowedTokens[i]] != 1) {
+                tokenFlag[allowedTokens[i]] = 1;
+                tokenRates[allowedTokens[i]] = 0;
+                tokens.push(allowedTokens[i]);
+            }
+        }
     }
 
-    function setEmployeeSalary(uint256 employeeId, uint256 yearlyEURSalary) onlyOwner public {
-
+    function setEmployeeSalary(uint256 employeeId, uint256 yearlyEURSalary) onlyOwner onlyEmployeeExist(employeeId) public {
+        employees[employeeId].yearlyEURSalary = yearlyEURSalary;
     }
 
-    function removeEmployee(uint256 employeeId) onlyOwner public {
+    function removeEmployee(uint256 employeeId) onlyOwner onlyEmployeeExist(employeeId) public {
+        address accountAddress = employees[employeeId].accountAddress;
+        delete(employees[employeeId]);
+        delete(employeeFlag[accountAddress]);
 
+        // Improvement: Payout final salary
     }
 
     function addFunds() onlyOwner payable public {
-
+        // TODO: Fire an event
     }
 
     function escapeHatch() onlyOwner public {
+        // Send all tokens
+        for (uint8 i = 0; i < tokens.length; i++) {
+            uint256 balance = EIP20(tokens[i]).balanceOf(this);
+            if (balance > 0) {
+                EIP20(tokens[i]).transfer(owner, balance);
+            }
+        }
 
+        // Send Ethers
+        owner.transfer(this.balance);
+        
+        selfdestruct(owner);
     }
 
-    // function addTokenFunds()? // Use approveAndCall or ERC223 tokenFallback
+    function tokenFallback(address from, uint value, bytes data) public {
+        // TODO: Fire an event
+        TokenReceived(from, value, data);
+    }
+
+    function setOracle(address _oracle) onlyOwner public {
+        oracle = _oracle;
+    }
 
     /* GETTER */
  
