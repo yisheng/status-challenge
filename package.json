@@ -1,0 +1,22 @@
+{
+  "name": "status-challenge",
+  "version": "1.0.0",
+  "description": "Smart contract challenge for status.im",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yisheng/status-challenge.git"
+  },
+  "author": "yisheng",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yisheng/status-challenge/issues"
+  },
+  "homepage": "https://github.com/yisheng/status-challenge#readme",
+  "dependencies": {
+    "zeppelin-solidity": "1.7.0"
+  }
+}
