@@ -86,7 +86,8 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         address accountAddress,
         address[] allowedTokens,
         uint256[] initialTokenDistribution,
-        uint256 initialYearlyEURSalary) onlyOwner onlyEmployeeNotExist(accountAddress) isValidDistribution(initialTokenDistribution) public {
+        uint256 initialYearlyEURSalary
+    ) onlyOwner onlyEmployeeNotExist(accountAddress) isValidDistribution(initialTokenDistribution) public {
         require(accountAddress != address(0));
         require(accountAddress != address(this));
         require(allowedTokens.length == initialTokenDistribution.length);
