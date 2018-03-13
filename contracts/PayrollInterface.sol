@@ -9,7 +9,7 @@ contract PayrollInterface {
     function removeEmployee(uint256 employeeId) public;
 
     function addFunds() payable public;
-    function scapeHatch() public;
+    function escapeHatch() public;
     // function addTokenFunds()? // Use approveAndCall or ERC223 tokenFallback
  
     function getEmployeeCount() public constant returns (uint256);

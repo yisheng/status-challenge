@@ -31,7 +31,7 @@ contract Payroll is Ownable, PayrollInterface {
 
     }
 
-    function scapeHatch() public {
+    function escapeHatch() public {
 
     }
 
