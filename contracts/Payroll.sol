@@ -15,7 +15,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     struct Employee {
         address accountAddress;
         address[] allowedTokens;
-        uint256[] tokenDistribution;
+        uint256[] tokenDistribution; // Sum of token distribution (by %) should be 100%
         uint256 yearlyEURSalary;
         uint256 lastPayDay;
         uint256 lastAllocateDay;
@@ -23,10 +23,31 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
     address public oracle;
     Employee[] public employees;
-    mapping(address => uint8) public employeeFlag;
     address[] public tokens;
-    mapping(address => uint8) public tokenFlag;
+
+    // accountAddress => (employeeId + 1), where `employeeId` starts from `0`.
+    // Therefor, `mapping.value == 0` means `address` is not exist.
+    mapping(address => uint256) public employeeFlag;
+
+    // tokenAddress => (tokenId + 1), where `tokenId` starts from `0`.
+    // Therefor, `mapping.value == 0` means `address` is not exist.
+    mapping(address => uint256) public tokenFlag;
+
+    // tokenAddress => tokenRate
     mapping(address => uint256) public tokenRates;
+
+    uint256 ALLOCATE_CYCLE = 180 days; // Just for simplicity
+    uint256 PAYOUT_CYCLE = 30 days; // Just for simplicity
+
+    modifier isValidDistribution(uint256[] distribution) {
+        uint256 sum = 0;
+        for (uint8 i = 0; i < distribution.length; i++) {
+            sum += distribution[i];
+        }
+
+        require(sum == 100);
+        _;
+    }
 
     modifier onlyOracle() {
         require(msg.sender == oracle);
@@ -34,7 +55,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
 
     modifier onlyEmployee() {
-        require(employeeFlag[msg.sender] == 1);
+        require(employeeFlag[msg.sender] > 0);
         _;
     }
 
@@ -44,7 +65,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
 
     modifier onlyEmployeeNotExist(address accountAddress) {
-        require(employeeFlag[accountAddress] != 1);
+        require(employeeFlag[accountAddress] == 0);
         _;
     }
 
@@ -58,29 +79,20 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         address accountAddress,
         address[] allowedTokens,
         uint256[] initialTokenDistribution,
-        uint256 initialYearlyEURSalary) onlyOwner onlyEmployeeNotExist(accountAddress) public {
-        // Requirement
+        uint256 initialYearlyEURSalary) onlyOwner onlyEmployeeNotExist(accountAddress) isValidDistribution(initialTokenDistribution) public {
         require(accountAddress != address(0));
         require(accountAddress != address(this));
         require(allowedTokens.length == initialTokenDistribution.length);
 
-        // Sum of token distribution (by %) should be 100%
-        uint8 i = 0;
-        uint256 sumDistribution = 0;
-        for (i = 0; i < initialTokenDistribution.length; i++) {
-            sumDistribution += initialTokenDistribution[i];
-        }
-        require(sumDistribution == 100);
-
         Employee memory employee = Employee(accountAddress, allowedTokens, initialTokenDistribution, initialYearlyEURSalary, now, 0);
-        employees.push(employee);
-        employeeFlag[accountAddress] = 1;
+        uint256 employeeId = employees.push(employee);
+        employeeFlag[accountAddress] = employeeId + 1;
 
-        for (i = 0; i < allowedTokens.length; i++) {
-            if (tokenFlag[allowedTokens[i]] != 1) {
-                tokenFlag[allowedTokens[i]] = 1;
+        for (uint8 i = 0; i < allowedTokens.length; i++) {
+            if (tokenFlag[allowedTokens[i]] == 0) {
+                uint256 tokenId = tokens.push(allowedTokens[i]);
+                tokenFlag[allowedTokens[i]] = tokenId + 1;
                 tokenRates[allowedTokens[i]] = 0;
-                tokens.push(allowedTokens[i]);
             }
         }
     }
@@ -94,7 +106,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         delete(employees[employeeId]);
         delete(employeeFlag[accountAddress]);
 
-        // Improvement: Payout final salary
+        // Future Improvement: Payout final salary
     }
 
     function addFunds() onlyOwner payable public {
@@ -117,8 +129,8 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
 
     function tokenFallback(address from, uint value, bytes data) public {
-        require(tokenFlag[from] == 1);
-        
+        require(tokenFlag[from] > 0);
+
         // TODO: Fire an event
         TokenReceived(from, value, data);
     }
@@ -161,12 +173,40 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
     /* EMPLOYEE ONLY */
 
-    function determineAllocation(address[] tokens, uint256[] distribution) onlyEmployee public {
+    function determineAllocation(address[] tokens, uint256[] distribution) onlyEmployee isValidDistribution(distribution) public {
+        uint256 employeeId = employeeFlag[msg.sender] - 1;
+        Employee storage employee = employees[employeeId];
 
+        require(tokens.length == distribution.length);
+        require(now - employee.lastAllocateDay >= ALLOCATE_CYCLE);
+
+        // Require all tokens are allowed,
+        // and arrange the new distribution by the order of `employee.allowedTokens`
+        bool isTokenAllowed = false;
+        uint256[] memory newDistribution = new uint256[](employee.allowedTokens.length);
+        for (uint8 i = 0; i < tokens.length; i++) {
+            isTokenAllowed = false;
+            for (uint8 j = 0; j < employee.allowedTokens.length; j++) {
+                if (tokens[i] == employee.allowedTokens[j]) {
+                    isTokenAllowed = true;
+                    newDistribution[j] = distribution[i]; // Following `employee.allowedTokens`'s order
+                    break;
+                }
+            }
+            require(isTokenAllowed);
+        }
+
+        employee.tokenDistribution = newDistribution;
+        employee.lastAllocateDay = now;
     }
 
     function payday() onlyEmployee public {
+        uint256 employeeId = employeeFlag[msg.sender] - 1;
+        Employee storage employee = employees[employeeId];
 
+        require(now - employee.lastPayDay >= PAYOUT_CYCLE);
+
+        // Require the contract has enough tokens
     }
 
     /* ORACLE ONLY */
