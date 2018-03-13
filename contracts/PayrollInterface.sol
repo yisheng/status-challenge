@@ -4,7 +4,7 @@ pragma solidity ^0.4.18;
 // Also lets assume we can 100% trust the exchange rate oracle
 contract PayrollInterface {
     /* OWNER ONLY */
-    function addEmployee(address accountAddress, address[] allowedTokens, uint256 initialYearlyEURSalary) public;
+    function addEmployee(address accountAddress, address[] allowedTokens, uint256[] initialTokenDistribution, uint256 initialYearlyEURSalary) public;
     function setEmployeeSalary(uint256 employeeId, uint256 yearlyEURSalary) public;
     function removeEmployee(uint256 employeeId) public;
 
@@ -13,7 +13,13 @@ contract PayrollInterface {
     // function addTokenFunds()? // Use approveAndCall or ERC223 tokenFallback
  
     function getEmployeeCount() public constant returns (uint256);
-    function getEmployee(uint256 employeeId) public constant returns (address employee); // Return all important info too
+    function getEmployee(uint256 employeeId) public constant returns (address accountAddress,
+        address[] allowedTokens,
+        uint256[] tokenDistribution,
+        uint256 yearlyEURSalary,
+        uint256 lastPayDay,
+        uint256 lastAllocateDay
+    ); // Return all important info too
  
     function calculatePayrollBurnrate() public constant returns (uint256); // Monthly EUR amount spent in salaries
     function calculatePayrollRunway() public constant returns (uint256); // Days until the contract can run out of funds
