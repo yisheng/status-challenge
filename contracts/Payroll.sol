@@ -171,7 +171,11 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
  
     function calculatePayrollBurnrate() onlyOwner public constant returns (uint256) {
-
+        uint256 sum = 0;
+        for (uint8 i = 0; i < employees.length; i++) {
+            sum += employees[i].yearlyEURSalary;
+        }
+        return sum;
     }
 
     function calculatePayrollRunway() onlyOwner public constant returns (uint256) {
@@ -180,23 +184,23 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
     /* EMPLOYEE ONLY */
 
-    function determineAllocation(address[] tokens, uint256[] distribution) onlyEmployee isValidDistribution(distribution) public {
+    function determineAllocation(address[] _tokens, uint256[] _distribution) onlyEmployee isValidDistribution(_distribution) public {
         uint256 employeeId = employeeFlag[msg.sender] - 1;
         Employee storage employee = employees[employeeId];
 
-        require(tokens.length == distribution.length);
+        require(_tokens.length == _distribution.length);
         require(now - employee.lastAllocateDay >= ALLOCATE_CYCLE);
 
         // Require all tokens are allowed,
         // and arrange the new distribution by the order of `employee.allowedTokens`
         bool isTokenAllowed = false;
         uint256[] memory newDistribution = new uint256[](employee.allowedTokens.length);
-        for (uint8 i = 0; i < tokens.length; i++) {
+        for (uint8 i = 0; i < _tokens.length; i++) {
             isTokenAllowed = false;
             for (uint8 j = 0; j < employee.allowedTokens.length; j++) {
-                if (tokens[i] == employee.allowedTokens[j]) {
+                if (_tokens[i] == employee.allowedTokens[j]) {
                     isTokenAllowed = true;
-                    newDistribution[j] = distribution[i]; // Following `employee.allowedTokens`'s order
+                    newDistribution[j] = _distribution[i];
                     break;
                 }
             }
@@ -249,7 +253,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
 
     /* ORACLE ONLY */
-    
+
     function setExchangeRate(address token, uint256 eurExchangeRate) onlyOracle public {
         require(tokenFlag[token] > 0);
         tokenRates[token] = eurExchangeRate;
