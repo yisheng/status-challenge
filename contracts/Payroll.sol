@@ -59,10 +59,12 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         address[] allowedTokens,
         uint256[] initialTokenDistribution,
         uint256 initialYearlyEURSalary) onlyOwner onlyEmployeeNotExist(accountAddress) public {
+        // Requirement
         require(accountAddress != address(0));
         require(accountAddress != address(this));
         require(allowedTokens.length == initialTokenDistribution.length);
 
+        // Sum of token distribution (by %) should be 100%
         uint8 i = 0;
         uint256 sumDistribution = 0;
         for (i = 0; i < initialTokenDistribution.length; i++) {
@@ -115,6 +117,8 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
 
     function tokenFallback(address from, uint value, bytes data) public {
+        require(tokenFlag[from] == 1);
+        
         // TODO: Fire an event
         TokenReceived(from, value, data);
     }
