@@ -39,6 +39,8 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     uint256 ALLOCATE_CYCLE = 180 days; // Just for simplicity
     uint256 PAYOUT_CYCLE = 30 days; // Just for simplicity
 
+    /* Modifiers */
+
     modifier isValidDistribution(uint256[] distribution) {
         uint256 sum = 0;
         for (uint8 i = 0; i < distribution.length; i++) {
@@ -180,7 +182,41 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     }
 
     function calculatePayrollRunway() onlyOwner public constant returns (uint256) {
+        uint256[] memory tokenBalances = new uint256[](tokens.length);
+        mapping(address => uint256) tokenYearlyDemands;
 
+        // The balances
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenBalances[i] = EIP20(tokens[i]).balanceOf(this);
+            tokenYearlyDemands[tokens[i]] = 0;
+        }
+
+        // The demands
+        for (uint256 j = 0; j < employees.length; j++) {
+            Employee storage employee = employees[j];
+            for (uint256 k = 0; k < employee.allowedTokens.length; k++) {
+                address tokenAddress = employee.allowedTokens[k];
+                uint256 tokenRate = tokenRates[tokenAddress];
+                uint256 distribution = employee.tokenDistribution[k];
+                tokenYearlyDemands[tokenAddress] += employee.yearlyEURSalary * tokenRate * distribution / 100;
+            }
+        }
+
+        // The min daysLeft
+        uint256 daysLeft = 0;
+        for (uint256 l = 0; l < tokens.length; l++) {
+            uint256 demand = tokenYearlyDemands[tokens[l]];
+            if (demand == 0) {
+                continue;
+            }
+
+            uint256 temp = tokenBalances[l] / demand * 365;
+            if (daysLeft == 0 || temp < daysLeft) {
+                daysLeft = temp;
+            }
+        }
+
+        return daysLeft;
     }
 
     /* EMPLOYEE ONLY */
