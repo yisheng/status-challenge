@@ -5,6 +5,11 @@ import "./Token/EIP20.sol";
 import "./Token/ERC223ReceivingContract.sol";
 import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
+/**
+ * @title Status.im payroll contract
+ * @author Daniel <yang@desheng.me>
+ * @dev Smart contract challenge for status.im
+ */
 contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     /* Events */
 
@@ -90,6 +95,13 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
     /* OWNER ONLY */
 
+    /**
+     * @dev Function to add a new employee
+     * @param accountAddress The address of employee
+     * @param allowedTokens Array of tokens addresses
+     * @param initialTokenDistribution Array of token distribution in %, should be sum 100%
+     * @param initialYearlyEURSalary The yearly salary in EUR
+     */
     function addEmployee(
         address accountAddress,
         address[] allowedTokens,
@@ -115,10 +127,19 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         EmployeeAdded(employeeId, accountAddress, allowedTokens, initialTokenDistribution, initialYearlyEURSalary);
     }
 
+    /**
+     * @dev Function to set a new salary for a given employee
+     * @param employeeId The ID of employee
+     * @param yearlyEURSalary The yearly salary in EUR
+     */
     function setEmployeeSalary(uint256 employeeId, uint256 yearlyEURSalary) onlyOwner onlyEmployeeExist(employeeId) public {
         employees[employeeId].yearlyEURSalary = yearlyEURSalary;
     }
 
+    /**
+     * @dev Function to remove an existing employee
+     * @param employeeId The ID of employee
+     */
     function removeEmployee(uint256 employeeId) onlyOwner onlyEmployeeExist(employeeId) public {
         address accountAddress = employees[employeeId].accountAddress;
         delete(employees[employeeId]);
