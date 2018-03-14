@@ -32,7 +32,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         uint256 lastAllocateDay;
     }
 
-    address public oracle;
+    address public oracle; // Just for simplicity
     Employee[] public employees;
     address[] public tokens;
 
@@ -278,6 +278,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
             }
         }
 
+        // Re-allocation
         employee.tokenDistribution = newDistribution;
         employee.lastAllocateDay = now;
     }
