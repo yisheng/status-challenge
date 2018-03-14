@@ -15,9 +15,13 @@ Smart contract challenge for [status.im](https://status.im).
     - Rinkeby: `npm run deploy-rinkeby`
     - Mainnet: `npm run deploy-mainnet`
 
+### Known issues
+
+- The codes were not fully tested
+- The functions were not fully commented
+- Lack of unit tests
+
 ### Possible improvement
 
 - After `removeEmployee`, payoff the final salary
-- Add unit tests
-- Full dev comments
-- Add a frontend UI for HR
+- Add frontend UI for HR
