@@ -2,7 +2,7 @@
 
 Smart contract challenge for [status.im](https://status.im).
 
-#### How to use?
+### How to use?
 
 1. Install dependencies: `npm install`
 2. Deploy to
@@ -10,7 +10,8 @@ Smart contract challenge for [status.im](https://status.im).
     - Rinkeby: `npm run deploy-rinkeby`
     - Mainnet: `npm run deploy-mainnet`
 
-#### TODO
+### Possible improvement
 
-- [ ] Events
-- [ ] Comments
+- After `removeEmployee`, payoff the final salary
+- Add unit tests
+- Add a frontend UI for HR
