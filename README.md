@@ -19,4 +19,5 @@ Smart contract challenge for [status.im](https://status.im).
 
 - After `removeEmployee`, payoff the final salary
 - Add unit tests
+- Full dev comments
 - Add a frontend UI for HR
