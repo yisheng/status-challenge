@@ -8,7 +8,13 @@ import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     /* Events */
 
-    event TokenReceived(address from, uint value, bytes data);
+    event EmployeeAdded(uint256 employeeId, address accountAddress, address[] allowedTokens, uint256[] initialTokenDistribution, uint256 initialYearlyEURSalary);
+    event EmployeeRemoved(uint256 employeeId, address accountAddress);
+    event EtherReceived(address sender, uint256 value);
+    event TokenReceived(address sender, uint256 value, bytes data);
+    event BalanceInsufficient(address tokenAddress);
+    event PayementFailed(address tokenAddress, uint valueToSend);
+    event EscapeHatch();
 
     /* Struct & Variables */
 
@@ -105,6 +111,8 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
                 tokenRates[allowedTokens[i]] = 0;
             }
         }
+
+        EmployeeAdded(employeeId, accountAddress, allowedTokens, initialTokenDistribution, initialYearlyEURSalary);
     }
 
     function setEmployeeSalary(uint256 employeeId, uint256 yearlyEURSalary) onlyOwner onlyEmployeeExist(employeeId) public {
@@ -116,11 +124,13 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
         delete(employees[employeeId]);
         delete(employeeFlag[accountAddress]);
 
+        EmployeeRemoved(employeeId, accountAddress);
+
         // Future Improvement: Payout final salary
     }
 
     function addFunds() onlyOwner payable public {
-        // TODO: Fire an event
+        EtherReceived(msg.sender, msg.value);
     }
 
     function escapeHatch() onlyOwner public {
@@ -134,15 +144,16 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
         // Send Ethers
         owner.transfer(this.balance);
+
+        EscapeHatch();
         
         selfdestruct(owner);
     }
 
-    function tokenFallback(address from, uint value, bytes data) public {
-        require(tokenFlag[from] > 0);
+    function tokenFallback(address sender, uint value, bytes data) public {
+        require(tokenFlag[sender] > 0);
 
-        // TODO: Fire an event
-        TokenReceived(from, value, data);
+        TokenReceived(sender, value, data);
     }
 
     function setOracle(address _oracle) onlyOwner public {
@@ -269,7 +280,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
                 uint256 tokenRate = tokenRates[tokenAddress];
                 tokensToSend[i] = (employee.yearlyEURSalary / 12) * tokenRate * employee.tokenDistribution[i] / 100;
                 if (balance < tokensToSend[i]) {
-                    // TODO: Fire an event
+                    BalanceInsufficient(address tokenAddress);
                     revert();
                 }
             }
@@ -281,7 +292,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
             if (tokensToSend[j] > 0) {
                 if (!EIP20(tokenAddress).transfer(msg.sender, tokensToSend[j])) {
-                    // TODO: Fire an event
+                    PayementFailed(tokenAddress, tokensToSend[j]);
                 }
             }
         }
