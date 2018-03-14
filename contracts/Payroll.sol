@@ -18,7 +18,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
     event EtherReceived(address sender, uint256 value);
     event TokenReceived(address sender, uint256 value, bytes data);
     event BalanceInsufficient(address tokenAddress);
-    event PayementFailed(address tokenAddress, uint valueToSend);
+    event PayementFailed(address tokenAddress, uint256 valueToSend);
     event EscapeHatch();
 
     /* Struct & Variables */
@@ -215,12 +215,12 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
 
     function calculatePayrollRunway() onlyOwner public constant returns (uint256) {
         uint256[] memory tokenBalances = new uint256[](tokens.length);
-        mapping(address => uint256) tokenYearlyDemands;
+        uint256[] memory tokenYearlyDemands = new uint256[](tokens.length);
 
         // The balances
         for (uint256 i = 0; i < tokens.length; i++) {
             tokenBalances[i] = EIP20(tokens[i]).balanceOf(this);
-            tokenYearlyDemands[tokens[i]] = 0;
+            tokenYearlyDemands[i] = 0;
         }
 
         // The demands
@@ -228,16 +228,17 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
             Employee storage employee = employees[j];
             for (uint256 k = 0; k < employee.allowedTokens.length; k++) {
                 address tokenAddress = employee.allowedTokens[k];
+                uint256 tokenId = tokenFlag[tokenAddress] - 1;
                 uint256 tokenRate = tokenRates[tokenAddress];
                 uint256 distribution = employee.tokenDistribution[k];
-                tokenYearlyDemands[tokenAddress] += employee.yearlyEURSalary * tokenRate * distribution / 100;
+                tokenYearlyDemands[tokenId] += employee.yearlyEURSalary * tokenRate * distribution / 100;
             }
         }
 
         // The min daysLeft
         uint256 daysLeft = 0;
         for (uint256 l = 0; l < tokens.length; l++) {
-            uint256 demand = tokenYearlyDemands[tokens[l]];
+            uint256 demand = tokenYearlyDemands[l];
             if (demand == 0) {
                 continue;
             }
@@ -302,7 +303,7 @@ contract Payroll is Ownable, PayrollInterface, ERC223ReceivingContract {
                 uint256 tokenRate = tokenRates[tokenAddress];
                 tokensToSend[i] = (employee.yearlyEURSalary / 12) * tokenRate * employee.tokenDistribution[i] / 100;
                 if (balance < tokensToSend[i]) {
-                    BalanceInsufficient(address tokenAddress);
+                    BalanceInsufficient(tokenAddress);
                     revert();
                 }
             }
