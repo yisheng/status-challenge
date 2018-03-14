@@ -2,7 +2,12 @@
 
 Smart contract challenge for [status.im](https://status.im).
 
-### How to use?
+### Prerequisites
+
+1. Install Truffle framework: `npm install -g truffle`
+2. Install [Ganache](http://truffleframework.com/ganache/)
+
+### Getting started
 
 1. Install dependencies: `npm install`
 2. Deploy to
